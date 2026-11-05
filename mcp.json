@@ -1,0 +1,1 @@
+{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"entity54":{"args":["${PLUGIN_ROOT}/server/dist/index.js"],"command":"node","cwd":"${PLUGIN_ROOT}/server","env":{"ENTITY54_DATA_DIR":"${PLUGIN_DATA}/entity54"},"type":"stdio"}}}

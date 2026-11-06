@@ -1,0 +1,119 @@
+{
+  "integrity": {
+    "alg": "HMAC-SHA256",
+    "value": "UNSIGNED-EXAMPLE-RUN-node-scripts-setup.mjs-TO-SIGN"
+  },
+  "issuedAt": "2026-11-05T00:00:00.000Z",
+  "policyId": "entity54-default",
+  "rules": [
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "owner-all",
+      "role": "OWNER",
+      "tool": "*"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "admin-linear",
+      "role": "ADMIN",
+      "tool": "linear:create-issue"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "admin-policy-export",
+      "role": "ADMIN",
+      "tool": "policy:export"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "admin-policy-import",
+      "role": "ADMIN",
+      "tool": "policy:import"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "admin-reads",
+      "role": "ADMIN",
+      "tool": "entity54:read"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "admin-events-list",
+      "role": "ADMIN",
+      "tool": "entity54:events-list"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "admin-receipts-verify",
+      "role": "ADMIN",
+      "tool": "entity54:receipts-verify"
+    },
+    {
+      "bot": "*",
+      "constraints": {
+        "team": "ENG"
+      },
+      "effect": "allow",
+      "id": "user-linear-eng",
+      "role": "USER",
+      "tool": "linear:create-issue"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "user-reads",
+      "role": "USER",
+      "tool": "entity54:read"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "user-events-list",
+      "role": "USER",
+      "tool": "entity54:events-list"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "user-receipts-verify",
+      "role": "USER",
+      "tool": "entity54:receipts-verify"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "guest-reads",
+      "role": "GUEST",
+      "tool": "entity54:read"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "guest-events-list",
+      "role": "GUEST",
+      "tool": "entity54:events-list"
+    },
+    {
+      "bot": "*",
+      "effect": "allow",
+      "id": "guest-receipts-verify",
+      "role": "GUEST",
+      "tool": "entity54:receipts-verify"
+    },
+    {
+      "bot": "*",
+      "effect": "deny",
+      "id": "deny-policy-activation-below-owner",
+      "role": "ADMIN",
+      "tool": "policy:activate"
+    }
+  ],
+  "version": 1
+}

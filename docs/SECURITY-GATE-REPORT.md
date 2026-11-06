@@ -16,10 +16,12 @@ npm run build
 npm test
 ```
 
-Expected: 48 tests, 48 pass, 0 fail, exit 0. Runtime about 15 seconds on
-the build machine (Node v24.22.1, npm 10.9.4). The full log from the
-qualifying run is saved with the handoff evidence as
-`entity54-test-run-2026-11-05.log` (48 pass, 0 fail, 13.4s).
+The 2026-11-05 qualifying run, before N1–N9 remediation, was 48 tests,
+48 pass, 0 fail, exit 0 (`entity54-test-run-2026-11-05.log`, about
+13.4s, Node v24.22.1, npm 10.9.4). The remediated suite is larger.
+`docs/REMEDIATION-EVIDENCE.md` records the command, the pass count, and
+the runtime for this head. This report does not replace that evidence
+and does not claim an independent re-review.
 
 The demo reproduces the headline story without any test framework:
 
@@ -150,8 +152,8 @@ relying only on an abort signal. The test now passes in about 60ms.
 
 ## Defects found during testing and fixed
 
-All three were found by the author's own tests before the PR, and all
-three are fixed in the submitted code. They are recorded here because a
+All four were found by the author's own tests before the PR, and all
+four are fixed in the submitted code. They are recorded here because a
 security report that hides its own findings is not a security report.
 
 - **D1 (unknown-tool wildcard allow).** The OWNER wildcard rule
@@ -165,8 +167,10 @@ security report that hides its own findings is not a security report.
   ignores the abort signal (or a stalled network call) left the await
   hanging forever, which is a fail-open hang, not a fail-closed timeout.
   Fixed by racing the fetch against a timeout promise that rejects with
-  `LinearError` code `timeout`. Test: "live transport timeout is a
-  LinearError with code timeout" (passes in about 60ms).
+  `LinearError` code `timeout`. The body read (`response.text()`) is in
+  that same race, so a `text()` that ignores abort also fails closed.
+  Test: "live transport timeout is a LinearError with code timeout" and
+  "live transport body read shares the fetch timeout".
 - **D3 (event-feed gate tool name mismatch).** The events-list handler
   gated on `entity54:events-read` while the governed tool set named it
   `entity54:events-list`, so every feed listing would have been denied as
@@ -180,13 +184,18 @@ security report that hides its own findings is not a security report.
   action (Linear execution, policy import, policy activation), so an
   allowed action leaves two receipts: the decision and the outcome.
   Test: "every decision writes a receipt and the chain verifies"
-  (3 receipts for authorize plus create, chain intact).
+  (authorize plus create leave 3 receipts and the chain verifies; the
+  verify call then receipts itself).
 
 ## What is NOT verified
 
 - No live Hermes instance, no live Telegram bots, no live Linear API
   call. See Coverage, limitations 1 to 3.
-- No independent reproduction. GROKBOT reproduction is pending.
+- Independent reproduction of commit `623a0a079914b3e7f1b782f20a9a4ee756892627`
+  returned REQUEST CHANGES (N1–N9). Remediation is recorded in
+  `docs/REMEDIATION.md` and `docs/REMEDIATION-EVIDENCE.md`. That
+  reproduction does not cover this head. Re-review is required. This
+  report does not certify the remediation.
 - No penetration test by a third party. The prompt-injection checks
   cover argument-carried strings only.
 - The gateway trust boundary (the server trusts the asserted principal
@@ -195,7 +204,10 @@ security report that hides its own findings is not a security report.
 
 ## Verdict
 
-SELF-TESTED ONLY. The 48 automated tests pass. The four defects above
-were found and fixed during testing. The plugin is ready for independent
-reproduction and for review in a draft PR. It is not production
-authorized, and this report does not claim otherwise.
+SELF-TESTED ONLY. The four defects above were found and fixed during
+the original testing. Findings N1–N9 from the independent reproduction
+of `623a0a07` are remediated on this head; see `docs/REMEDIATION.md`.
+The current test count is in `docs/REMEDIATION-EVIDENCE.md`. This head
+is a draft for independent re-review. It is not production authorized,
+and this report does not claim otherwise. No live Linear, Telegram, or
+Hermes run is claimed.

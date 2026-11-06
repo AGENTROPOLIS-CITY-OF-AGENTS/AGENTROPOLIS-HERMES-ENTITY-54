@@ -54,7 +54,7 @@ test("live transport without a Linear key fails closed after authorization", asy
   }
 });
 
-test("live transport against a real Linear API returns a real issue id (unit)", async () => {
+test("live transport parses a stubbed issueCreate response (no network)", async () => {
   const client = createLinearClient({
     transport: "live",
     apiKey: "lin_api_test",
@@ -93,6 +93,28 @@ test("live transport timeout is a LinearError with code timeout", async () => {
     () => client.createIssue({ teamId: "ENG", title: "Unit issue" }),
     (err) => err instanceof LinearError && err.code === "timeout"
   );
+});
+
+test("live transport body read shares the fetch timeout", async () => {
+  const client = createLinearClient({
+    transport: "live",
+    apiKey: "lin_api_test",
+    timeoutMs: 50,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      text: () => new Promise(() => {}),
+    }),
+  });
+  const result = await Promise.race([
+    client.createIssue({ teamId: "ENG", title: "Unit issue" }).then(
+      () => "resolved",
+      (err) => err
+    ),
+    new Promise((resolve) => setTimeout(() => resolve("hung"), 1500)),
+  ]);
+  assert.equal(result instanceof LinearError, true);
+  assert.equal(result.code, "timeout");
 });
 
 test("live transport without a key throws not_configured before any fetch", async () => {

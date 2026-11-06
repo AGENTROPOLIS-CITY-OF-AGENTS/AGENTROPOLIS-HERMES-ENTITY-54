@@ -34,13 +34,20 @@ node demo/run-demo.mjs --paced
    The issue id is `mock-issue-1` with the URL `mock://linear/mock-issue-1`:
    this is a demo, not a real Linear issue.
 3. **Receipt verification.** `entity54_receipts_verify` reports ok true
-   with 4 receipts checked and no bad sequence.
-4. **Sanitized event feed.** Five events are listed: the denial, two
-   allows, execution started, execution succeeded. No titles, no
-   descriptions, no raw principal ids. Identities are 16-hex-char
-   pseudonyms.
+   with 4 receipts checked and no bad sequence. The successful check
+   then writes receipt 5, so the result also carries `receiptSeq` 5.
+   The checked count is the chain that was verified, not the receipt
+   written afterward.
+4. **Sanitized event feed.** Six events are listed: the denial, two
+   allows, execution started, execution succeeded, and the allow for
+   receipt verification. No titles, no descriptions, no raw principal
+   ids. Identities are 16-hex-char pseudonyms. The list call itself is
+   receipt 6 and is written after the snapshot, so it is not one of
+   the six events in this response. `limit` and `offset` are the
+   clamped values (10 and 0).
 5. **Receipts on disk.** The transcript ends with the receipt log as
-   stored in `receipts.jsonl`, one line per receipt.
+   stored in `receipts.jsonl`, one line per receipt. Six lines: the
+   original four, plus the verify allow and the events-list allow.
 
 ## Expected transcript (fast mode)
 
@@ -79,7 +86,17 @@ Result: {
   "ok": true,
   "checked": 4,
   "badSeq": null,
-  "reason": "chain intact"
+  "reason": "chain intact",
+  "receiptSeq": 5
+}
+...
+=== STEP 5: the sanitized event feed ===
+Result: {
+  "events": [ ... six events ... ],
+  "total": 6,
+  "limit": 10,
+  "offset": 0,
+  "receiptSeq": 6
 }
 ...
 === RECEIPTS ON DISK ===
@@ -87,12 +104,18 @@ Result: {
   #2 authorization allow linear:create-issue (OWNER, policy v1)
   #3 authorization allow linear:create-issue (OWNER, policy v1)
   #4 execution success linear:create-issue (OWNER, policy v1)
+  #5 authorization allow entity54:receipts-verify (OWNER, policy v1)
+  #6 authorization allow entity54:events-list (OWNER, policy v1)
 ```
 
 The full output from the qualifying run is saved with the handoff
-evidence as `entity54-demo-output-2026-11-05.txt`. Timestamps and the
-temp data dir path change on every run. The decisions, receipt numbers,
-and issue id do not.
+evidence as `entity54-demo-output-2026-11-05.txt`. That transcript is
+the pre-remediation demo (four receipts, five events). After N3, read
+decisions are receipted, so this file's transcript above is the current
+one: decisions, issue id `mock-issue-1`, and the first four receipt
+numbers are unchanged; receipts 5 and 6 and the sixth event are the
+new audit records. Timestamps and the temp data dir path change on
+every run. Mock transport only. No live Linear, Telegram, or Hermes.
 
 ## Recording
 

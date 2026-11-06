@@ -55,6 +55,14 @@ export function loadConfig(env: NodeJS.ProcessEnv): Entity54Config {
     );
   }
   const eventsEnabled = env.ENTITY54_EVENTS_ENABLED === "true";
+  const pseudonymKey = (env.ENTITY54_PSEUDONYM_KEY ?? "").trim() || null;
+  // Fail closed: an enabled feed with no pseudonym key hashes every
+  // principal to the same token, so a GUEST filter would match every event.
+  if (eventsEnabled && !pseudonymKey) {
+    throw new ConfigError(
+      "ENTITY54_PSEUDONYM_KEY is required when ENTITY54_EVENTS_ENABLED=true. Refusing to start: without a pseudonym key every principal would share one token and viewer scope would fail open. Generate a key with: node scripts/setup.mjs."
+    );
+  }
   const linearTransport = env.ENTITY54_LINEAR_TRANSPORT === "mock" ? "mock" : "live";
   const execTimeoutMs = Number.parseInt(env.ENTITY54_EXEC_TIMEOUT_MS ?? "10000", 10);
   return {
@@ -62,7 +70,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Entity54Config {
     principalId,
     botId,
     policyKey,
-    pseudonymKey: (env.ENTITY54_PSEUDONYM_KEY ?? "").trim() || null,
+    pseudonymKey,
     eventsEnabled,
     linearApiKey: (env.LINEAR_API_KEY ?? "").trim() || null,
     linearTransport,
@@ -72,4 +80,17 @@ export function loadConfig(env: NodeJS.ProcessEnv): Entity54Config {
 
 export function ensureDataDir(dataDir: string): void {
   fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Denial reason for entity54_events_list, or null when the feed may be read.
+// Startup already refuses an enabled feed with no key. This check is the
+// second gate so a mismatched config cannot list events.
+export function eventsFeedDenial(eventsEnabled: boolean, pseudonymKey: string | null): string | null {
+  if (!eventsEnabled) {
+    return "event feed is disabled. Set ENTITY54_EVENTS_ENABLED=true to enable it.";
+  }
+  if (!pseudonymKey) {
+    return "event feed requires ENTITY54_PSEUDONYM_KEY. Refusing to list events without a pseudonym key.";
+  }
+  return null;
 }

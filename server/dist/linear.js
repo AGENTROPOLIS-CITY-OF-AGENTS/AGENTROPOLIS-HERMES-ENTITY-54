@@ -94,7 +94,9 @@ export function createLinearClient(options) {
                     }),
                     timeoutPromise,
                 ]);
-                const text = await response.text();
+                // The body read shares the same deadline as the fetch. A text()
+                // that ignores abort must still lose the race.
+                const text = await Promise.race([response.text(), timeoutPromise]);
                 if (!response.ok) {
                     throw new LinearError("linear_http", `Linear API returned HTTP ${response.status}`);
                 }

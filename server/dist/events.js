@@ -9,12 +9,14 @@
 // The feed is disabled by default and must be explicitly enabled. It is
 // read-only, bounded (1000 entries, oldest dropped), and paginated.
 // Visibility is enforced by viewer scope: a GUEST sees only events that
-// carry their own pseudonym; USER and above see events inside their bot
-// scope; ADMIN and OWNER see all events. The feed can never authorize
+// carry their own pseudonym; USER and ADMIN see events inside their bot
+// scope; OWNER sees all events. The feed can never authorize
 // anything: it is a view over past decisions, never an input to a decision.
+// Listing without a pseudonym key returns no events. A missing key must
+// not collapse every principal to one shared token.
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { pseudonym } from "./crypto.js";
+import { pseudonym, sha256Hex } from "./crypto.js";
 export const EVENT_CATEGORIES = [
     "authorization_allowed",
     "authorization_denied",
@@ -55,7 +57,9 @@ export class EventStore {
     }
     hashPrincipal(principal) {
         if (!this.pseudonymKey) {
-            return "unkeyed";
+            // Not a viewer pseudonym and not a shared sentinel. Listing is
+            // refused while unkeyed, so this value is never used for scope.
+            return `nokey:${sha256Hex(`entity54-unkeyed-v1:${principal}`).slice(0, 16)}`;
         }
         return pseudonym(this.pseudonymKey, principal);
     }
@@ -87,6 +91,11 @@ export class EventStore {
     list(input) {
         const safeLimit = Math.max(1, Math.min(MAX_PAGE, Math.floor(input.limit) || 25));
         const safeOffset = Math.max(0, Math.floor(input.offset) || 0);
+        // Fail closed. Without a key, every historical "unkeyed" token would
+        // match every viewer. Return nothing for every role.
+        if (!this.pseudonymKey) {
+            return { events: [], total: 0, limit: safeLimit, offset: safeOffset };
+        }
         const viewerHash = this.hashPrincipal(input.viewerPrincipal);
         let visible = this.events;
         if (input.viewerRole === "GUEST") {
@@ -100,6 +109,6 @@ export class EventStore {
         }
         const total = visible.length;
         const page = visible.slice(safeOffset, safeOffset + safeLimit);
-        return { events: page, total };
+        return { events: page, total, limit: safeLimit, offset: safeOffset };
     }
 }

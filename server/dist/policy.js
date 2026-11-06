@@ -192,13 +192,19 @@ export function writePolicyFile(filePath, doc) {
 }
 // Import staging: the candidate must verify AND carry a strictly higher
 // version than the active policy. Equal or lower versions are replay or
-// downgrade attempts and are rejected.
-export function stagePolicyImport(active, candidate) {
+// downgrade attempts and are rejected. A candidate must also be strictly
+// newer than any policy already staged. Staging replaces pending only
+// upward. Activation remains a separate OWNER-only step. An ADMIN cannot
+// replace a higher staged version with a lower one.
+export function stagePolicyImport(active, candidate, pending = null) {
     if (candidate.policyId !== active.policyId) {
         throw new PolicyError(`policy id mismatch: candidate ${candidate.policyId} does not match active ${active.policyId}`);
     }
     if (candidate.version <= active.version) {
         throw new PolicyError(`policy version ${candidate.version} is not newer than active version ${active.version}; replay or downgrade rejected`);
+    }
+    if (pending !== null && candidate.version <= pending.version) {
+        throw new PolicyError(`policy version ${candidate.version} is not newer than staged version ${pending.version}; replacing a staged policy with an equal or lower version is rejected`);
     }
     return candidate;
 }

@@ -16,20 +16,24 @@ writes, nothing more.
 - **Authorization.** Four roles: OWNER, ADMIN, USER, GUEST. Default-deny.
   Per-tool and per-bot scoping. Unknown tools fail closed. A principal
   cannot claim a different identity or a higher role by asking for one.
-- **Receipts.** Every decision, allowed or denied, is appended to a JSONL
-  log with a SHA-256 hash chain and an HMAC per entry. Tampering with any
-  entry breaks verification at that sequence number.
+- **Receipts.** Every call-tool decision, allowed or denied, is appended
+  to a JSONL log with a SHA-256 hash chain and an HMAC per entry. A
+  separate anchor file records the last sequence and hash under its own
+  HMAC. Editing an entry, deleting one from the middle, deleting the
+  tail, or emptying the log breaks verification.
 - **Linear.** Issue creation runs only after authorization, with the
   approved arguments. Denied requests never reach Linear. A mock transport
   exists for demos and tests; it is labelled mock in every receipt.
 - **Policy sync.** Versioned policy documents with HMAC-SHA256 integrity.
   Import stages a policy; it never activates on import. Activation is a
   separate OWNER-only step. Equal or lower versions are rejected as replay
-  or downgrade. No credential or secret is ever part of a policy document.
+  or downgrade, including a version that is not strictly newer than the
+  policy already staged. No credential or secret is ever part of a policy document.
 - **Event feed.** Optional, disabled by default, read-only. Sanitized
   events only: no prompts, no arguments, no message content, no titles,
   no tokens, no credentials. Identities appear as short HMAC pseudonyms.
-  GUEST viewers see only their own events.
+  GUEST viewers see only their own events. The feed cannot be enabled
+  without `ENTITY54_PSEUDONYM_KEY`; an unkeyed feed returns no events.
 
 ## Trust model
 
@@ -87,8 +91,8 @@ environment (the profile `.env`). Never commit that file. The variables:
 | `ENTITY54_PRINCIPAL_ID` | yes | Gateway-asserted caller principal, for example `tg:123456789` |
 | `ENTITY54_BOT_ID` | yes | Gateway-asserted bot id, for example `bot-main` |
 | `ENTITY54_POLICY_KEY` | yes | HMAC key for policy and receipt integrity |
-| `ENTITY54_PSEUDONYM_KEY` | no | HMAC key for event-feed pseudonyms (separate from the policy key) |
-| `ENTITY54_EVENTS_ENABLED` | no | `true` to enable the event feed. Default `false` |
+| `ENTITY54_PSEUDONYM_KEY` | required when the event feed is enabled | HMAC key for event-feed pseudonyms (separate from the policy key). Startup refuses `ENTITY54_EVENTS_ENABLED=true` without it |
+| `ENTITY54_EVENTS_ENABLED` | no | `true` to enable the event feed. Default `false`. Requires `ENTITY54_PSEUDONYM_KEY` |
 | `ENTITY54_LINEAR_TRANSPORT` | no | `live` (default) or `mock` |
 | `LINEAR_API_KEY` | no | Linear API key. Absent means Linear calls fail closed as not configured |
 | `ENTITY54_EXEC_TIMEOUT_MS` | no | Linear call timeout in ms. Default `10000` |
@@ -136,8 +140,13 @@ matching rule means deny.
 
 Receipts live in `receipts.jsonl` in the data directory. Each entry has a
 sequence number, the previous entry hash, its own SHA-256 hash, and an
-HMAC. Run `entity54_receipts_verify` to check the chain. Deleting or
-editing any entry breaks verification at the affected sequence.
+HMAC. `receipts.anchor.json` stores the last sequence and last hash under
+a separate HMAC. Run `entity54_receipts_verify` to check the chain against
+that anchor. Editing any entry breaks verification at that sequence.
+Deleting a middle entry breaks the chain at the next sequence. Deleting
+the last receipt, or emptying the log while the anchor remains, fails
+verification as tail truncation. Deleting both the log and the anchor is
+indistinguishable from a fresh store.
 
 Events live in `events.jsonl`. They are capped at 1000 entries, oldest
 dropped, and paginated at most 100 per page. They contain no raw content
@@ -151,7 +160,7 @@ all events.
 cd server
 npm ci
 npm run build     # typecheck and compile to dist/
-npm test          # 48 tests, Node built-in runner, no test framework
+npm test          # Node built-in runner, no test framework
 npm run demo      # reproducible demo: denied operation, authorized operation, receipts
 node demo/run-demo.mjs --paced   # same demo, paced for screen recording (about 70s)
 ```
@@ -171,8 +180,11 @@ node demo/run-demo.mjs --paced   # same demo, paced for screen recording (about 
   Telegram end-to-end test was not run. It needs real Telegram bots and a
   Hermes instance. See `docs/SECURITY-GATE-REPORT.md`.
 - All security results in this repo are self-tested by the author unless
-  labelled otherwise. Independent reproduction by GROKBOT is pending and
-  is required before any production claim.
+  labelled otherwise. Independent reproduction of commit `623a0a07`
+  returned REQUEST CHANGES. This branch remediates findings N1–N9.
+  The implementing agent does not self-certify. A new head needs an
+  independent re-review before any production claim. No live Linear,
+  Telegram, or Hermes run is claimed.
 
 ## License
 

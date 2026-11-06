@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { startServer, readEvents } from "./helpers.mjs";
 import { EventStore } from "../dist/events.js";
 import { pseudonym } from "../dist/crypto.js";
+import { loadConfig, ConfigError, eventsFeedDenial } from "../dist/config.js";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as fs from "node:fs";
@@ -95,6 +96,118 @@ test("category filter and pagination work", async () => {
     assert.ok(page1.parsed.total >= 3);
     assert.equal(page1.parsed.limit, 1);
     assert.equal(page1.parsed.offset, 0);
+  } finally {
+    await s.close();
+  }
+});
+
+test("GUEST sees no events when the pseudonym key is unset (P5b)", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "entity54-events-"));
+  const store = new EventStore(dir, null);
+  store.record({ category: "tool_execution_succeeded", tool: "linear:create-issue", principal: "tg:100", bot: "bot-main", decision: "success", receiptRef: 1 });
+  store.record({ category: "authorization_allowed", tool: "entity54:read", principal: "tg:300", bot: "bot-main", decision: "allow", receiptRef: 2 });
+  store.record({ category: "authorization_denied", tool: "linear:create-issue", principal: "tg:400", bot: "bot-main", decision: "deny", receiptRef: 3 });
+  const guest = store.list({
+    viewerPrincipal: "tg:400", viewerRole: "GUEST", viewerBot: "bot-main", limit: 100, offset: 0,
+  });
+  assert.equal(guest.total, 0);
+  assert.deepEqual(guest.events, []);
+  const owner = store.list({
+    viewerPrincipal: "tg:100", viewerRole: "OWNER", viewerBot: "bot-main", limit: 100, offset: 0,
+  });
+  assert.equal(owner.total, 0);
+  const user = store.list({
+    viewerPrincipal: "tg:300", viewerRole: "USER", viewerBot: "bot-main", limit: 100, offset: 0,
+  });
+  assert.equal(user.total, 0);
+  const raw = fs.readFileSync(path.join(dir, "events.jsonl"), "utf8");
+  assert.equal(raw.includes("\"unkeyed\""), false);
+  assert.equal(raw.includes("tg:100"), false);
+  assert.equal(raw.includes("tg:300"), false);
+  assert.equal(raw.includes("tg:400"), false);
+});
+
+test("with a pseudonym key, a GUEST sees only their own events", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "entity54-events-"));
+  const key = "test-pseudonym-key-0123456789abcdef";
+  const store = new EventStore(dir, key);
+  store.record({ category: "tool_execution_succeeded", tool: "linear:create-issue", principal: "tg:100", bot: "bot-main", decision: "success", receiptRef: 1 });
+  store.record({ category: "authorization_allowed", tool: "entity54:read", principal: "tg:300", bot: "bot-main", decision: "allow", receiptRef: 2 });
+  store.record({ category: "authorization_denied", tool: "linear:create-issue", principal: "tg:400", bot: "bot-main", decision: "deny", receiptRef: 3 });
+  store.record({ category: "authorization_allowed", tool: "entity54:events-list", principal: "tg:400", bot: "bot-main", decision: "allow", receiptRef: 4 });
+  const guestHash = pseudonym(key, "tg:400");
+  const guest = store.list({
+    viewerPrincipal: "tg:400", viewerRole: "GUEST", viewerBot: "bot-main", limit: 100, offset: 0,
+  });
+  assert.equal(guest.total, 2);
+  assert.ok(guest.events.every((event) => event.principalHash === guestHash));
+  assert.equal(JSON.stringify(guest).includes("tg:100"), false);
+  const owner = store.list({
+    viewerPrincipal: "tg:100", viewerRole: "OWNER", viewerBot: "bot-main", limit: 100, offset: 0,
+  });
+  assert.equal(owner.total, 4);
+});
+
+test("enabling the event feed without a pseudonym key is refused", () => {
+  assert.throws(
+    () => loadConfig({
+      ENTITY54_PRINCIPAL_ID: "tg:100",
+      ENTITY54_BOT_ID: "bot-main",
+      ENTITY54_POLICY_KEY: "test-policy-key",
+      ENTITY54_EVENTS_ENABLED: "true",
+    }),
+    (err) => err instanceof ConfigError && /PSEUDONYM_KEY/.test(err.message)
+  );
+  const disabled = loadConfig({
+    ENTITY54_PRINCIPAL_ID: "tg:100",
+    ENTITY54_BOT_ID: "bot-main",
+    ENTITY54_POLICY_KEY: "test-policy-key",
+  });
+  assert.equal(disabled.eventsEnabled, false);
+  assert.equal(disabled.pseudonymKey, null);
+  assert.match(eventsFeedDenial(true, null), /PSEUDONYM_KEY/);
+  assert.equal(eventsFeedDenial(true, "key"), null);
+  assert.match(eventsFeedDenial(false, null), /disabled/);
+});
+
+test("startup refuses ENTITY54_EVENTS_ENABLED=true without ENTITY54_PSEUDONYM_KEY", async () => {
+  const { spawn } = await import("node:child_process");
+  const { makeDataDir } = await import("./helpers.mjs");
+  const dir = makeDataDir();
+  const env = {
+    ...process.env,
+    ENTITY54_DATA_DIR: dir,
+    ENTITY54_PRINCIPAL_ID: "tg:100",
+    ENTITY54_BOT_ID: "bot-main",
+    ENTITY54_POLICY_KEY: "test-policy-key-0123456789abcdef",
+    ENTITY54_EVENTS_ENABLED: "true",
+  };
+  delete env.ENTITY54_PSEUDONYM_KEY;
+  const child = spawn(process.execPath, [new URL("../dist/index.js", import.meta.url).pathname], {
+    env,
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  let stderr = "";
+  child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+  const code = await new Promise((resolve) => {
+    const timer = setTimeout(() => { child.kill(); resolve(null); }, 5000);
+    child.on("exit", (c) => { clearTimeout(timer); resolve(c); });
+  });
+  assert.equal(code, 2);
+  assert.match(stderr, /PSEUDONYM_KEY/);
+});
+
+test("events_list echoes the clamped limit and offset", async () => {
+  const s = await startServer({ principal: "tg:100", eventsEnabled: true });
+  try {
+    const low = await s.call("entity54_events_list", { principal: "tg:100", bot: "bot-main", limit: -5, offset: -3 });
+    assert.equal(low.isError, false);
+    assert.equal(low.parsed.limit, 1);
+    assert.equal(low.parsed.offset, 0);
+    const high = await s.call("entity54_events_list", { principal: "tg:100", bot: "bot-main", limit: 100000, offset: 5 });
+    assert.equal(high.isError, false);
+    assert.equal(high.parsed.limit, 100);
+    assert.equal(high.parsed.offset, 5);
   } finally {
     await s.close();
   }

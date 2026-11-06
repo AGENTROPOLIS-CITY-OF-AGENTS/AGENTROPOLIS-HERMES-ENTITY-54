@@ -2,8 +2,14 @@
 //
 // The server exposes eight tools. Every tool first resolves the caller
 // against the gateway-asserted identity, then authorizes against the
-// versioned policy, and only then acts. Every decision writes a
-// tamper-evident receipt. Nothing in this file calls the model, and no
+// versioned policy, and only then acts. Every call-tool decision writes a
+// tamper-evident receipt: allows and denies for authorize, Linear,
+// policy import and activation, policy export, status, receipt
+// verification (after a successful check), and the event feed, including
+// the disabled-feed denial and unknown MCP tool names. A failed receipt
+// verification does not append, so a broken anchor is not advanced.
+// Startup refusals happen before a store exists and are not receipted.
+// Nothing in this file calls the model, and no
 // instruction carried inside a tool argument, a tool result, or a message
 // can change a role, a rule, or a decision. Authorization is deterministic
 // code, not LLM judgment.
@@ -26,8 +32,8 @@ import * as path from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, } from "@modelcontextprotocol/sdk/types.js";
-import { loadConfig, ensureDataDir, ConfigError, } from "./config.js";
-import { loadPolicyFile, writePolicyFile, verifyPolicy, stagePolicyImport, } from "./policy.js";
+import { loadConfig, ensureDataDir, eventsFeedDenial, ConfigError, } from "./config.js";
+import { loadPolicyFile, writePolicyFile, verifyPolicy, stagePolicyImport, PolicyError, } from "./policy.js";
 import { ReceiptStore } from "./receipts.js";
 import { EventStore, EVENT_CATEGORIES } from "./events.js";
 import { loadPrincipals, resolveCaller, authorizeTool, AuthzError, } from "./authz.js";
@@ -101,6 +107,16 @@ function asString(value, field) {
         throw new AuthzError("invalid_args", `argument ${field} must be a non-empty string`);
     }
     return value;
+}
+function claimedArg(args, field) {
+    if (typeof args !== "object" || args === null || Array.isArray(args)) {
+        return "unknown";
+    }
+    const value = args[field];
+    if (typeof value !== "string" || value.length === 0) {
+        return "unknown";
+    }
+    return value.length > 256 ? `${value.slice(0, 256)}…` : value;
 }
 export function loadState(config) {
     ensureDataDir(config.dataDir);
@@ -217,16 +233,16 @@ export function createEntity54Server(state) {
                         return textResult({ decision: "deny", reason: checked.outcome.reason, receiptSeq: checked.receiptSeq, executed: false }, true);
                     }
                     decisionReceipt(caller, claimedBot, tool, checked.outcome);
-                    const input = validateIssueInput({ teamId: args.teamId, title: args.title, description: args.description, priority: args.priority });
-                    state.events.record({
-                        category: "tool_execution_started",
-                        tool,
-                        decision: "started",
-                        principal: caller.id,
-                        bot: claimedBot,
-                        receiptRef: state.receipts.count(),
-                    });
                     try {
+                        const input = validateIssueInput({ teamId: args.teamId, title: args.title, description: args.description, priority: args.priority });
+                        state.events.record({
+                            category: "tool_execution_started",
+                            tool,
+                            decision: "started",
+                            principal: caller.id,
+                            bot: claimedBot,
+                            receiptRef: state.receipts.count(),
+                        });
                         const result = await linear.createIssue(input);
                         const receipt = state.receipts.append({
                             ts: new Date().toISOString(),
@@ -279,7 +295,8 @@ export function createEntity54Server(state) {
                     if (!checked.allowed) {
                         return textResult({ decision: "deny", reason: checked.outcome.reason, receiptSeq: checked.receiptSeq }, true);
                     }
-                    return textResult({ decision: "allow", policy: state.policy });
+                    const receiptSeq = decisionReceipt(caller, claimedBot, "policy:export", checked.outcome);
+                    return textResult({ decision: "allow", policy: state.policy, receiptSeq });
                 }
                 case "entity54_policy_import": {
                     const checked = gate(caller, claimedBot, "policy:import", {});
@@ -289,7 +306,7 @@ export function createEntity54Server(state) {
                     decisionReceipt(caller, claimedBot, "policy:import", checked.outcome);
                     try {
                         const candidate = verifyPolicy(args.policy, config.policyKey);
-                        const staged = stagePolicyImport(state.policy, candidate);
+                        const staged = stagePolicyImport(state.policy, candidate, state.pendingPolicy);
                         state.pendingPolicy = staged;
                         writePolicyFile(state.pendingPath, staged);
                         const receipt = state.receipts.append({
@@ -389,11 +406,33 @@ export function createEntity54Server(state) {
                         return textResult({ decision: "deny", reason: checked.outcome.reason, receiptSeq: checked.receiptSeq }, true);
                     }
                     const result = state.receipts.verify();
-                    return textResult({ ok: result.ok, checked: result.checked, badSeq: result.badSeq, reason: result.reason });
+                    // Receipt the allow only after a successful check. Appending onto
+                    // a broken chain would advance the anchor past the damage.
+                    let receiptSeq = null;
+                    if (result.ok) {
+                        receiptSeq = decisionReceipt(caller, claimedBot, "entity54:receipts-verify", checked.outcome);
+                    }
+                    return textResult({
+                        ok: result.ok,
+                        checked: result.checked,
+                        badSeq: result.badSeq,
+                        reason: result.reason,
+                        receiptSeq,
+                    });
                 }
                 case "entity54_events_list": {
-                    if (!config.eventsEnabled) {
-                        return textResult({ decision: "deny", reason: "event feed is disabled. Set ENTITY54_EVENTS_ENABLED=true to enable it." }, true);
+                    const feedDenial = eventsFeedDenial(config.eventsEnabled, config.pseudonymKey);
+                    if (feedDenial) {
+                        const receiptSeq = denyReceipt(caller, claimedBot, "entity54:events-list", feedDenial);
+                        state.events.record({
+                            category: "authorization_denied",
+                            tool: "entity54:events-list",
+                            decision: "deny",
+                            principal: caller.id,
+                            bot: claimedBot,
+                            receiptRef: receiptSeq,
+                        });
+                        return textResult({ decision: "deny", reason: feedDenial, receiptSeq }, true);
                     }
                     const checked = gate(caller, claimedBot, "entity54:events-list", {});
                     if (!checked.allowed) {
@@ -402,7 +441,9 @@ export function createEntity54Server(state) {
                     let category;
                     if (args.category !== undefined) {
                         if (typeof args.category !== "string" || !EVENT_CATEGORIES.includes(args.category)) {
-                            return textResult({ decision: "deny", reason: `unknown event category: ${String(args.category)}` }, true);
+                            const reason = `unknown event category: ${String(args.category)}`;
+                            const receiptSeq = denyReceipt(caller, claimedBot, "entity54:events-list", reason);
+                            return textResult({ decision: "deny", reason, receiptSeq }, true);
                         }
                         category = args.category;
                     }
@@ -416,13 +457,21 @@ export function createEntity54Server(state) {
                         offset,
                         category,
                     });
-                    return textResult({ events: page.events, total: page.total, limit, offset });
+                    const receiptSeq = decisionReceipt(caller, claimedBot, "entity54:events-list", checked.outcome);
+                    return textResult({
+                        events: page.events,
+                        total: page.total,
+                        limit: page.limit,
+                        offset: page.offset,
+                        receiptSeq,
+                    });
                 }
                 case "entity54_status": {
                     const checked = gate(caller, claimedBot, "entity54:read", {});
                     if (!checked.allowed) {
                         return textResult({ decision: "deny", reason: checked.outcome.reason, receiptSeq: checked.receiptSeq }, true);
                     }
+                    const receiptSeq = decisionReceipt(caller, claimedBot, "entity54:status", checked.outcome);
                     return textResult({
                         server: SERVER_NAME,
                         version: SERVER_VERSION,
@@ -435,30 +484,59 @@ export function createEntity54Server(state) {
                         eventsStored: state.events.count(),
                         linearConfigured: config.linearApiKey !== null,
                         linearTransport: config.linearTransport,
+                        receiptSeq,
                     });
                 }
-                default:
-                    return textResult({ decision: "deny", reason: `unknown tool: ${name}` }, true);
+                default: {
+                    const reason = `unknown tool: ${name}`;
+                    const receiptSeq = denyReceipt(caller, claimedBot, name, reason);
+                    state.events.record({
+                        category: "authorization_denied",
+                        tool: name,
+                        decision: "deny",
+                        principal: caller.id,
+                        bot: claimedBot,
+                        receiptRef: receiptSeq,
+                    });
+                    return textResult({ decision: "deny", reason, receiptSeq }, true);
+                }
             }
         }
         catch (error) {
             const message = error instanceof Error ? error.message : "unknown error";
-            const code = error instanceof AuthzError ? error.code : "internal_error";
+            let code = "internal_error";
+            if (error instanceof AuthzError) {
+                code = error.code;
+            }
+            else if (error instanceof LinearError) {
+                code = error.code;
+            }
+            else if (error instanceof PolicyError) {
+                code = "policy_error";
+            }
+            const args = request.params.arguments;
+            const claimedPrincipal = claimedArg(args, "principal");
+            const claimedBot = claimedArg(args, "bot");
+            const asserted = state.principals.find((item) => item.id === config.principalId);
             try {
-                state.receipts.append({
+                const receipt = state.receipts.append({
                     ts: new Date().toISOString(),
                     type: "authorization",
                     decision: "deny",
-                    principal: typeof request.params.arguments === "object" && request.params.arguments !== null
-                        ? String(request.params.arguments.principal ?? "unknown")
-                        : "unknown",
-                    role: "unknown",
-                    bot: typeof request.params.arguments === "object" && request.params.arguments !== null
-                        ? String(request.params.arguments.bot ?? "unknown")
-                        : "unknown",
+                    principal: config.principalId,
+                    role: asserted ? asserted.role : "unknown",
+                    bot: config.botId,
                     tool: name,
                     policyVersion: state.policy.version,
-                    detail: `denied (${code}): ${message}`,
+                    detail: `denied (${code}): ${message}; claimedPrincipal=${claimedPrincipal}; claimedBot=${claimedBot}`,
+                });
+                state.events.record({
+                    category: "authorization_denied",
+                    tool: name,
+                    decision: "deny",
+                    principal: config.principalId,
+                    bot: config.botId,
+                    receiptRef: receipt.seq,
                 });
             }
             catch {

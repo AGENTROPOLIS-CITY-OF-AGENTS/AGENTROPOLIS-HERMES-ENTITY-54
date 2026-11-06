@@ -156,6 +156,35 @@ test("activation with no staged policy is denied", async () => {
   }
 });
 
+test("a staged policy cannot be replaced by an equal or lower version", async () => {
+  function policyVersion(version) {
+    return testPolicyDoc({
+      version,
+      rules: [{ id: "owner-all", effect: "allow", role: "OWNER", tool: "*", bot: "*" }],
+    });
+  }
+  const s = await startServer({ principal: "tg:200" });
+  try {
+    const staged = await s.call("entity54_policy_import", { principal: "tg:200", bot: "bot-main", policy: policyVersion(5) });
+    assert.equal(staged.isError, false);
+    assert.equal(staged.parsed.decision, "staged");
+    assert.equal(staged.parsed.version, 5);
+    const lower = await s.call("entity54_policy_import", { principal: "tg:200", bot: "bot-main", policy: policyVersion(3) });
+    assert.equal(lower.isError, true);
+    assert.equal(lower.parsed.decision, "rejected");
+    assert.match(lower.parsed.reason, /not newer than staged version 5/);
+    const status = await s.call("entity54_status", { principal: "tg:200", bot: "bot-main" });
+    assert.equal(status.parsed.policyVersion, 1);
+    assert.equal(status.parsed.pendingPolicyVersion, 5);
+    const higher = await s.call("entity54_policy_import", { principal: "tg:200", bot: "bot-main", policy: policyVersion(6) });
+    assert.equal(higher.isError, false);
+    assert.equal(higher.parsed.decision, "staged");
+    assert.equal(higher.parsed.version, 6);
+  } finally {
+    await s.close();
+  }
+});
+
 test("startup refuses an unsigned example policy", async () => {
   const { spawn } = await import("node:child_process");
   const { makeDataDir } = await import("./helpers.mjs");

@@ -21,7 +21,7 @@ COMMONS check. No deploy. Draft only.
 | Reviewed parent | `623a0a079914b3e7f1b782f20a9a4ee756892627` |
 | Branch | `fix/entity54-n1-n9-remediation` |
 | Base for the new draft PR | `feat/entity54-plugin-v1` |
-| Remediation commit | `COMMIT_SHA_HERE` |
+| Remediation commit | `a2bd38f5fd3db5b1b9925f7d9b5e6e3d5d432bda` |
 | Evidence commit | The child of the remediation commit. `git rev-parse HEAD` on this branch after both commits is the re-review target. The pull request body records that head. |
 | Reproduction report SHA-256 | `c5b8e5fd58c6b74f819c54f8633a4d710be55aad88630344c0d97c9445af1292` (the attached report; not modified, not committed) |
 | Prior verdict | REQUEST CHANGES against the parent above |

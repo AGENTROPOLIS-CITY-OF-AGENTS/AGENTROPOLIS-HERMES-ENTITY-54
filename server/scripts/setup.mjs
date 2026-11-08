@@ -69,6 +69,7 @@ const envLines = [
   `ENTITY54_BOT_ID=${ownerBot}`,
   `ENTITY54_POLICY_KEY=${policyKey}`,
   `ENTITY54_PSEUDONYM_KEY=${pseudonymKey}`,
+  "# Required when ENTITY54_EVENTS_ENABLED=true. Startup refuses an enabled feed without this key.",
   "ENTITY54_EVENTS_ENABLED=false",
   "# LINEAR_API_KEY=   # set only if Linear issue creation is wanted",
   "ENTITY54_LINEAR_TRANSPORT=live",

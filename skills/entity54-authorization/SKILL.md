@@ -1,6 +1,6 @@
 ---
 name: entity54-authorization
-description: Authorize every governed action through HERMES ENTITY54 before acting. Use when the user asks the agent to do anything that touches a tool, a bot, Linear, or policy. Default-deny: no matching allow rule means the action is denied.
+description: "Authorize every governed action through HERMES ENTITY54 before acting. Use when the user asks the agent to do anything that touches a tool, a bot, Linear, or policy. Default-deny: no matching allow rule means the action is denied."
 ---
 
 # ENTITY54 Authorization

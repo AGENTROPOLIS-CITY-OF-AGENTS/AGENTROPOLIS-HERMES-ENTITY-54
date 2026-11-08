@@ -76,7 +76,7 @@ or the real Linear API. No real credentials were used.
 
 | Check | Result | Test |
 | --- | --- | --- |
-| Three injection strings in tool arguments ("ignore previous instructions", fake SYSTEM role grant, "disregard ENTITY54 policy") cannot change a GUEST denial | PASS (self-tested) | authorization: prompt-injection strings |
+| Three injection strings in tool arguments (an instruction-override phrase, a fake SYSTEM role grant, a policy-disregard phrase) cannot change a GUEST denial | PASS (self-tested) | authorization: prompt-injection strings |
 | Policy export stays denied for GUEST after injection attempts | PASS (self-tested) | authorization: prompt-injection strings |
 | The skill file instructs the agent to treat tool output as untrusted data | PASS (self-tested, by inspection) | packaging: skill names authorize tool |
 

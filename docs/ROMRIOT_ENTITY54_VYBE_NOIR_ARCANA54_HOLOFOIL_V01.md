@@ -46,3 +46,47 @@ Each world event includes world_id, actor_id, action, causal_parent_id, event_id
 8. Independent review/reproduction and NEURO approval required for merge/deploy.
 
 No merge, deployment, live payment, production credentials, or release gate movement is authorized.
+
+## AGENTICtv distribution and creator participation (future extension)
+Canonical routing: **short-form plays on VYBE NOIR; long-form plays on AGENTICtv**. ROMRIOT world events and VYBE NOIR branch decisions are inputs to both surfaces. AGENTICtv is the long-form destination for full episodes, films, creator documentaries, and authorized livestreams; VYBE NOIR distributes short episodes, teasers, choice-driven clips, and entry points back to playable worlds.
+
+Proposed lifecycle:
+1. HERMES coordinates CREATOR-CORE + ROMRIOT production of a playable world and narrative event log.
+2. VYBE NOIR selects an authorized narrative branch and produces short-form discovery content.
+3. AGENTICtv publishes the associated long-form story or gameplay program.
+4. Opt-in UGC creators remix permitted assets, submit branch proposals, and publish attributed work.
+5. KOLs (key opinion leaders) can opt into collaboration invitations based on genuine creator interest, not fake engagement or manufactured endorsement.
+6. Verified participation, creator attribution, and viewer choices can inform new story branches and ROMRIOT world events. No automatic posting, unsolicited outreach, or metric manipulation.
+
+### Proposed shared content manifest (NOT implemented)
+```json
+{
+  "schema": "agentropolis.media.world-release.v0.1",
+  "world_id": "romriot:demo01",
+  "narrative_branch_id": "vybe-noir:branch01",
+  "creator_entity_id": "entity54:creator01",
+  "source_event_ids": ["romriot:event01"],
+  "short_form": {"surface": "vybe-noir", "asset_ref": "creator-core:clip01"},
+  "long_form": {"surface": "agentictv", "asset_ref": "creator-core:episode01"},
+  "interactive": {"surface": "romriot", "world_ref": "romriot:demo01"},
+  "remix_policy_ref": "entity54:policy:ugc01",
+  "license_provenance_ref": "creator-core:manifest01",
+  "consent_receipt_ref": "entity54:receipt:consent01"
+}
+```
+
+### Publication and KOL safeguards
+- ENTITY54 must enforce rights and current permissions at publication, remix, and external-distribution boundaries; manifests alone do not grant authority.
+- Preserve original-asset licenses, music/likeness rights, creator consent, credit, and revocation handling.
+- UGC submission and KOL invitations are opt-in and subject to moderation and anti-spam rules.
+- Distinguish genuine engagement from automated/bought views; never fabricate KOL participation or endorsements.
+- Record published URLs and content hashes only after independent verification.
+
+### Acceptance criteria (future, not November 11 hackathon gate)
+- One ROMRIOT world event links to a VYBE NOIR short and an AGENTICtv long-form release through the same world_id and narrative_branch_id.
+- A viewer can navigate short -> long -> playable world with traceable attribution.
+- A creator without remix permission receives a deny decision at the actual publishing boundary.
+- A creator with permission can submit a branch proposal; no automatic canonical publication without review.
+- KOL collaboration requires an affirmative opt-in and produces a consent receipt.
+
+AGENTICtv, ARCANA54, HOLOFOIL, and VYBE NOIR integrations remain PROPOSED until source contracts, tests, and runtime behavior are verified. They do not expand the isolated hackathon prototype.

@@ -38,12 +38,12 @@ writes, nothing more.
 ## Trust model
 
 Read this before installing. The server runs inside one Hermes profile over
-stdio. It does not re-authenticate the Telegram user. The Hermes gateway
+stdio. It does not re-authenticate the Telegram user. The configured Hermes profile
 asserts the caller identity (`ENTITY54_PRINCIPAL_ID`) and the bot scope
 (`ENTITY54_BOT_ID`) in the environment when it spawns the server. ENTITY54
 authorizes the asserted principal against the principal store and the
 versioned policy. If the claimed principal or bot in a tool call does not
-equal the asserted one, the call is denied as spoofing. If the gateway
+equal the asserted one, the call is denied as spoofing. If the profile
 asserts a wrong identity, ENTITY54 cannot detect it, because it has no
 independent identity source. That boundary is documented in
 `docs/SECURITY-GATE-REPORT.md`.
@@ -79,8 +79,10 @@ operator keys, signs the example policy, and writes the profile data
 directory plus an env file.
 
 ```sh
-node scripts/setup.mjs --data-dir ./data --owner tg:YOUR_TELEGRAM_ID --bot bot-main
+node scripts/setup.mjs --data-dir "${PLUGIN_DATA}/entity54" --owner tg:YOUR_TELEGRAM_ID --bot bot-main
 ```
+
+Use the plugin data directory configured by Hermes (`${PLUGIN_DATA}/entity54`), not `server/data`. Resolve `${PLUGIN_DATA}` to the actual installed plugin data directory in your shell before running setup; it is a Hermes manifest placeholder, not a guaranteed shell environment variable. Keep the generated file private.
 
 Copy the generated `.env.entity54` values into the Hermes profile
 environment (the profile `.env`). Never commit that file. The variables:
@@ -189,3 +191,7 @@ node demo/run-demo.mjs --paced   # same demo, paced for screen recording (about 
 ## License
 
 Apache License 2.0. See the repository LICENSE file.
+
+## Catalog startup warning
+
+The MCP manifest explicitly maps eight profile environment values into the subprocess. A profile-supplied principal is an **asserted identity**, not independently authenticated by ENTITY54. The configured bot scope is also an assertion. Operators must configure trusted profile-to-user binding; a shared static profile cannot establish distinct end-user identities. A profile identity mismatch must fail closed, not be described as verified Telegram authentication. No key should be entered into a PR, chat, or tracked file. The catalog review must reproduce startup with the installed plugin data path, including a missing-policy negative test.

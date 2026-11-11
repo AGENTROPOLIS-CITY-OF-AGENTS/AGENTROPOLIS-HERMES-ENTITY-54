@@ -1,1 +1,23 @@
-{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"entity54":{"args":["${PLUGIN_ROOT}/server/dist/index.js"],"command":"node","cwd":"${PLUGIN_ROOT}/server","env":{"ENTITY54_DATA_DIR":"${PLUGIN_DATA}/entity54"},"type":"stdio"}}}
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "entity54": {
+      "args": [
+        "${PLUGIN_ROOT}/server/dist/index.js"
+      ],
+      "command": "node",
+      "cwd": "${PLUGIN_ROOT}/server",
+      "env": {
+        "ENTITY54_DATA_DIR": "${PLUGIN_DATA}/entity54",
+        "ENTITY54_PRINCIPAL_ID": "${ENTITY54_PRINCIPAL_ID}",
+        "ENTITY54_BOT_ID": "${ENTITY54_BOT_ID}",
+        "ENTITY54_POLICY_KEY": "${ENTITY54_POLICY_KEY}",
+        "ENTITY54_PSEUDONYM_KEY": "${ENTITY54_PSEUDONYM_KEY}",
+        "ENTITY54_EVENTS_ENABLED": "${ENTITY54_EVENTS_ENABLED}",
+        "ENTITY54_LINEAR_TRANSPORT": "${ENTITY54_LINEAR_TRANSPORT}",
+        "LINEAR_API_KEY": "${LINEAR_API_KEY}"
+      },
+      "type": "stdio"
+    }
+  }
+}

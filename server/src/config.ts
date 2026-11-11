@@ -41,12 +41,12 @@ export function loadConfig(env: NodeJS.ProcessEnv): Entity54Config {
   const policyKey = (env.ENTITY54_POLICY_KEY ?? "").trim();
   if (!principalId) {
     throw new ConfigError(
-      "ENTITY54_PRINCIPAL_ID is required: the gateway-asserted caller principal (for example tg:123456789). Refusing to start without an asserted identity."
+      "ENTITY54_PRINCIPAL_ID is required: the static configured principal for this profile (for example tg:123456789). Refusing to start without a configured identity."
     );
   }
   if (!botId) {
     throw new ConfigError(
-      "ENTITY54_BOT_ID is required: the gateway-asserted bot id (for example bot-main). Refusing to start without an asserted bot scope."
+      "ENTITY54_BOT_ID is required: the static configured bot id for this profile (for example bot-main). Refusing to start without a configured bot scope."
     );
   }
   if (!policyKey) {

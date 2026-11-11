@@ -22,7 +22,7 @@ independently reproduced. Independent reproduction by GROKBOT is pending.
 
 | Requirement | Status | Notes |
 | --- | --- | --- |
-| ENTITY54 authorization: verified principal identities | DONE | Principals from the store file; roles OWNER/ADMIN/USER/GUEST; gateway-asserted identity in env. The server does not re-authenticate the Telegram user; see the trust model in `README.md` |
+| ENTITY54 authorization: verified principal identities | DONE | Principals from the store file; roles OWNER/ADMIN/USER/GUEST; configured identity assertion in env. The server does not re-authenticate the Telegram user; see the trust model in `README.md` |
 | Default-deny permission decisions | DONE | First matching rule wins; no match denies. Tested, including an empty policy denying OWNER |
 | Per-tool authorization | DONE | Rules match on tool; unknown tools fail closed before rule matching |
 | Per-bot authorization | DONE | Rules match on bot; principals carry a bot list; claimed bot must equal asserted bot |
@@ -74,8 +74,9 @@ shape informed the new server design, as a pattern, not as code.
    author running their own tests. Under the canonical pipeline, GROKBOT
    independent reproduction is required before any production claim.
    The security-gate report labels every result accordingly.
-5. **Gateway trust boundary.** The server trusts the gateway-asserted
-   principal and bot id from the environment. A compromised or
+5. **Gateway trust boundary.** The server trusts the configured
+   principal and bot id from the environment (configured identity
+   assertions). A compromised or
    misconfigured gateway can assert a wrong identity and ENTITY54 cannot
    detect it. This is the documented trust model, not a hidden gap.
 6. **Plugin hooks are not an enforcement boundary.** Hermes plugin hooks

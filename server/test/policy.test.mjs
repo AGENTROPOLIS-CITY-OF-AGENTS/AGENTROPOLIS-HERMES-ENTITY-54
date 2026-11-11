@@ -4,6 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { startServer, testPolicyDoc, TEST_KEY } from "./helpers.mjs";
 import { signPolicy } from "../dist/policy.js";
+import { fileURLToPath } from "node:url";
 
 function policyV2() {
   return testPolicyDoc({
@@ -193,7 +194,7 @@ test("startup refuses an unsigned example policy", async () => {
   const dir = makeDataDir();
   const unsigned = JSON.parse(fs.readFileSync(new URL("../../config/entity54.policy.example.json", import.meta.url), "utf8"));
   fs.writeFileSync(path.join(dir, "entity54.policy.json"), `${JSON.stringify(unsigned, null, 2)}\n`);
-  const child = spawn(process.execPath, [new URL("../dist/index.js", import.meta.url).pathname], {
+  const child = spawn(process.execPath, [fileURLToPath(new URL("../dist/index.js", import.meta.url))], {
     env: {
       ...process.env,
       ENTITY54_DATA_DIR: dir,

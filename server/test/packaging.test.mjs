@@ -6,8 +6,9 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import { spawn } from "node:child_process";
 import { makeDataDir } from "./helpers.mjs";
+import { fileURLToPath } from "node:url";
 
-const PLUGIN_ROOT = new URL("../..", import.meta.url).pathname;
+const PLUGIN_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 function readJson(rel) {
   return JSON.parse(fs.readFileSync(`${PLUGIN_ROOT}${rel}`, "utf8"));

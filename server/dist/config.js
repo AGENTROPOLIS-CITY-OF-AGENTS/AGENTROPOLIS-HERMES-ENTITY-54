@@ -22,10 +22,10 @@ export function loadConfig(env) {
     const botId = (env.ENTITY54_BOT_ID ?? "").trim();
     const policyKey = (env.ENTITY54_POLICY_KEY ?? "").trim();
     if (!principalId) {
-        throw new ConfigError("ENTITY54_PRINCIPAL_ID is required: the gateway-asserted caller principal (for example tg:123456789). Refusing to start without an asserted identity.");
+        throw new ConfigError("ENTITY54_PRINCIPAL_ID is required: the static configured principal for this profile (for example tg:123456789). Refusing to start without a configured identity.");
     }
     if (!botId) {
-        throw new ConfigError("ENTITY54_BOT_ID is required: the gateway-asserted bot id (for example bot-main). Refusing to start without an asserted bot scope.");
+        throw new ConfigError("ENTITY54_BOT_ID is required: the static configured bot id for this profile (for example bot-main). Refusing to start without a configured bot scope.");
     }
     if (!policyKey) {
         throw new ConfigError("ENTITY54_POLICY_KEY is required: HMAC key for policy and receipt integrity. Generate one with: node scripts/setup.mjs. Refusing to start without it.");

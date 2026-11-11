@@ -221,7 +221,7 @@ test("an unexposed MCP tool name is denied and receipted", async () => {
   }
 });
 
-test("outer-catch denials record the gateway-asserted identity and the claimed identity separately", async () => {
+test("outer-catch denials record the configured identity and the claimed identity separately", async () => {
   const s = await startServer({ principal: "tg:100" });
   try {
     const spoof = await s.call("entity54_authorize", { principal: "tg:999", bot: "bot-main", tool: "linear:create-issue" });

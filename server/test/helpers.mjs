@@ -5,6 +5,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { signPolicy } from "../dist/policy.js";
@@ -47,7 +48,7 @@ export async function startServer({
   extraEnv = {},
 } = {}) {
   const dataDir = makeDataDir({ policy, principals });
-  const serverPath = new URL("../dist/index.js", import.meta.url).pathname;
+  const serverPath = fileURLToPath(new URL("../dist/index.js", import.meta.url));
   const env = {
     ...process.env,
     ENTITY54_DATA_DIR: dataDir,

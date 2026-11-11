@@ -9,6 +9,7 @@ import { loadConfig, ConfigError, eventsFeedDenial } from "../dist/config.js";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 test("the feed is disabled by default and refuses to list", async () => {
   const s = await startServer({ principal: "tg:100" });
@@ -183,7 +184,7 @@ test("startup refuses ENTITY54_EVENTS_ENABLED=true without ENTITY54_PSEUDONYM_KE
     ENTITY54_EVENTS_ENABLED: "true",
   };
   delete env.ENTITY54_PSEUDONYM_KEY;
-  const child = spawn(process.execPath, [new URL("../dist/index.js", import.meta.url).pathname], {
+  const child = spawn(process.execPath, [fileURLToPath(new URL("../dist/index.js", import.meta.url))], {
     env,
     stdio: ["ignore", "ignore", "pipe"],
   });

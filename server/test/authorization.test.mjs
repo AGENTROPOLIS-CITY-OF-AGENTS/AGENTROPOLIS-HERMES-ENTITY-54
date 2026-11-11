@@ -85,7 +85,7 @@ test("a principal scoped only to bot-other is denied on bot-main", async () => {
   }
 });
 
-test("spoofing: claiming a different principal than the gateway asserted is denied", async () => {
+test("spoofing: claiming a different principal than the configured identity is denied", async () => {
   const s = await startServer({ principal: "tg:400" });
   try {
     const res = await s.call("entity54_linear_create_issue", { principal: "tg:100", bot: "bot-main", teamId: "ENG", title: "I am the owner" });

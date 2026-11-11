@@ -1,7 +1,6 @@
 # HERMES ENTITY54
 
-Role-based authorization for Hermes Agent, built as an Agent Plugins 1.0.0
-plugin. ENTITY54 decides what a principal may do, writes a tamper-evident
+Authorization and tamper-evident receipts for ENTITY54's own eight Linear and policy tools, packaged as an Agent Plugins 1.0.0 plugin. ENTITY54 decides what a principal may do, writes a tamper-evident
 receipt for every decision, governs Linear issue creation, and syncs
 versioned policy between profiles without ever syncing credentials.
 
@@ -38,13 +37,12 @@ writes, nothing more.
 ## Trust model
 
 Read this before installing. The server runs inside one Hermes profile over
-stdio. It does not re-authenticate the Telegram user. The configured Hermes profile
-asserts the caller identity (`ENTITY54_PRINCIPAL_ID`) and the bot scope
+stdio. It does not re-authenticate the Telegram user. The configured Hermes profile supplies a single static caller identity (`ENTITY54_PRINCIPAL_ID`) and the bot scope
 (`ENTITY54_BOT_ID`) in the environment when it spawns the server. ENTITY54
-authorizes the asserted principal against the principal store and the
+authorizes the configured principal against the principal store and the
 versioned policy. If the claimed principal or bot in a tool call does not
-equal the asserted one, the call is denied as spoofing. If the profile
-asserts a wrong identity, ENTITY54 cannot detect it, because it has no
+equal the configured one, the call is denied as spoofing. If the profile
+configures a wrong identity, ENTITY54 cannot detect it, because it has no
 independent identity source. That boundary is documented in
 `docs/SECURITY-GATE-REPORT.md`.
 
@@ -79,19 +77,18 @@ operator keys, signs the example policy, and writes the profile data
 directory plus an env file.
 
 ```sh
-node scripts/setup.mjs --data-dir "${PLUGIN_DATA}/entity54" --owner tg:YOUR_TELEGRAM_ID --bot bot-main
+node scripts/setup.mjs --owner tg:YOUR_TELEGRAM_ID --bot bot-main
 ```
 
-Use the plugin data directory configured by Hermes (`${PLUGIN_DATA}/entity54`), not `server/data`. Resolve `${PLUGIN_DATA}` to the actual installed plugin data directory in your shell before running setup; it is a Hermes manifest placeholder, not a guaranteed shell environment variable. Keep the generated file private.
+Set PLUGIN_DATA to the actual installed plugin data directory before running setup. The script defaults to PLUGIN_DATA/entity54 and refuses to initialize without PLUGIN_DATA or an explicit --data-dir override. The manifest's ${PLUGIN_DATA} placeholder is resolved by Hermes; it is not automatically a shell variable. Keep the generated file private.
 
 Copy the generated `.env.entity54` values into the Hermes profile
 environment (the profile `.env`). Never commit that file. The variables:
 
 | Variable | Required | What it is |
 | --- | --- | --- |
-| `ENTITY54_DATA_DIR` | yes | Profile data dir: policy, principals, receipts, events |
-| `ENTITY54_PRINCIPAL_ID` | yes | Gateway-asserted caller principal, for example `tg:123456789` |
-| `ENTITY54_BOT_ID` | yes | Gateway-asserted bot id, for example `bot-main` |
+| `ENTITY54_PRINCIPAL_ID` | yes | Static principal configured for this profile, for example `tg:123456789` |
+| `ENTITY54_BOT_ID` | yes | Static bot id configured for this profile, for example `bot-main` |
 | `ENTITY54_POLICY_KEY` | yes | HMAC key for policy and receipt integrity |
 | `ENTITY54_PSEUDONYM_KEY` | required when the event feed is enabled | HMAC key for event-feed pseudonyms (separate from the policy key). Startup refuses `ENTITY54_EVENTS_ENABLED=true` without it |
 | `ENTITY54_EVENTS_ENABLED` | no | `true` to enable the event feed. Default `false`. Requires `ENTITY54_PSEUDONYM_KEY` |
@@ -178,7 +175,7 @@ node demo/run-demo.mjs --paced   # same demo, paced for screen recording (about 
   gate in this server. A caller that bypasses this server and calls
   another tool directly is outside ENTITY54's enforcement.
 - Telegram isolation is enforced at the authorizer: bot scope in the
-  principal store plus the gateway-asserted bot id. A live two-bot
+  principal store plus the profile-configured bot id. A live two-bot
   Telegram end-to-end test was not run. It needs real Telegram bots and a
   Hermes instance. See `docs/SECURITY-GATE-REPORT.md`.
 - All security results in this repo are self-tested by the author unless
@@ -194,4 +191,4 @@ Apache License 2.0. See the repository LICENSE file.
 
 ## Catalog startup warning
 
-The MCP manifest explicitly maps eight profile environment values into the subprocess. A profile-supplied principal is an **asserted identity**, not independently authenticated by ENTITY54. The configured bot scope is also an assertion. Operators must configure trusted profile-to-user binding; a shared static profile cannot establish distinct end-user identities. A profile identity mismatch must fail closed, not be described as verified Telegram authentication. No key should be entered into a PR, chat, or tracked file. The catalog review must reproduce startup with the installed plugin data path, including a missing-policy negative test.
+The MCP manifest explicitly maps eight profile environment values into the subprocess. A profile-supplied principal is a **single static configured identity**, not independently authenticated by ENTITY54. All callers through a profile act as its configured principal (OWNER by default); ENTITY54 roles govern only ENTITY54 tools, not Hermes tools. The bot scope is also statically configured. Operators must configure trusted profile-to-user binding; a shared static profile cannot establish distinct end-user identities. A profile identity mismatch must fail closed, not be described as verified Telegram authentication. No key should be entered into a PR, chat, or tracked file. The catalog review must reproduce startup with the installed plugin data path, including a missing-policy negative test.

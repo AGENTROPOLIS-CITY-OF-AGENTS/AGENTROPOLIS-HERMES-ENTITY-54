@@ -1,1 +1,21 @@
-{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","author":{"name":"AGENTROPOLIS (NEURO)"},"description":"HERMES ENTITY54: role-based authorization for Hermes Agent. OWNER, ADMIN, USER, GUEST roles, default-deny, per-tool and per-bot authorization, tamper-evident receipts, governed Linear issue creation, and versioned policy sync.","homepage":"https://github.com/AGENTROPOLIS-CITY-OF-AGENTS/AGENTROPOLIS-HERMES-ENTITY-54","keywords":["hermes","authorization","roles","receipts","policy","linear","telegram"],"license":"Apache-2.0","name":"hermes-entity54","repository":"https://github.com/AGENTROPOLIS-CITY-OF-AGENTS/AGENTROPOLIS-HERMES-ENTITY-54","version":"0.1.0"}
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "name": "AGENTROPOLIS (NEURO)"
+  },
+  "description": "Authorization and tamper-evident receipts for ENTITY54's own eight Linear and policy tools. The principal is a single static identity per profile, fixed when the server starts; all callers through that profile act as that principal (OWNER by default). ENTITY54 roles govern only its own tools, not Hermes tools.",
+  "homepage": "https://github.com/AGENTROPOLIS-CITY-OF-AGENTS/AGENTROPOLIS-HERMES-ENTITY-54",
+  "keywords": [
+    "hermes",
+    "authorization",
+    "roles",
+    "receipts",
+    "policy",
+    "linear",
+    "telegram"
+  ],
+  "license": "Apache-2.0",
+  "name": "hermes-entity54",
+  "repository": "https://github.com/AGENTROPOLIS-CITY-OF-AGENTS/AGENTROPOLIS-HERMES-ENTITY-54",
+  "version": "0.1.0"
+}

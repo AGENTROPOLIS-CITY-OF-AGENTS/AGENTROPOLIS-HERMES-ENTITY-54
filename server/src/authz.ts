@@ -2,16 +2,16 @@
 //
 // Trust model, stated plainly because everything else rests on it:
 // - The MCP server runs inside one Hermes profile over stdio. Only that
-//   profile's gateway can talk to it. The gateway asserts the caller
-//   identity (ENTITY54_PRINCIPAL_ID) and bot scope (ENTITY54_BOT_ID) in the
-//   server environment at spawn time. ENTITY54 does NOT re-authenticate the
-//   Telegram user; the gateway already did that (allowlist, session keyed
-//   by user id). ENTITY54 authorizes the gateway-asserted principal
-//   against the principal store and the versioned policy.
+//   configured Hermes process can invoke it. ENTITY54_PRINCIPAL_ID and
+//   ENTITY54_BOT_ID are configured environment assertions, not independently
+//   authenticated end-user identity or verified gateway claims. ENTITY54
+//   does not authenticate the Telegram user or prove gateway provenance.
+//   ENTITY54 applies local principal-store and policy checks to these
+//   configured assertions. Operators must secure their origin and scope.
 // - Authentication is not authorization. A verified principal with no
 //   matching allow rule is denied.
-// - Spoofing: any tool argument that claims a principal different from the
-//   gateway-asserted one is rejected as a spoofing attempt, and the
+// - Claim mismatch: any tool argument that names a principal different from
+//   the configured environment assertion is rejected, and the
 //   rejection itself is written to the receipt log.
 // - Telegram isolation: roles and rules are scoped per bot. A principal
 //   verified on bot A holds nothing on bot B unless the policy explicitly
@@ -99,8 +99,8 @@ export interface CallerContext {
   claimedBot: string;
 }
 
-// Resolve the caller: the claimed identity must equal the gateway-asserted
-// identity, the principal must exist in the store, and the asserted bot
+// Resolve the caller: claimed identity must match the configured environment
+// assertion (not independently authenticated), principal must exist, and bot
 // must be in the principal's bot scope. Any failure is fail-closed.
 export function resolveCaller(
   principals: Principal[],
@@ -109,20 +109,20 @@ export function resolveCaller(
   if (ctx.claimedPrincipal !== ctx.assertedPrincipal) {
     throw new AuthzError(
       "spoofing",
-      `claimed principal ${ctx.claimedPrincipal} does not match gateway-asserted principal ${ctx.assertedPrincipal}`
+      `claimed principal ${ctx.claimedPrincipal} does not match configured principal ${ctx.assertedPrincipal}`
     );
   }
   if (ctx.claimedBot !== ctx.assertedBot) {
     throw new AuthzError(
       "spoofing",
-      `claimed bot ${ctx.claimedBot} does not match gateway-asserted bot ${ctx.assertedBot}`
+      `claimed bot ${ctx.claimedBot} does not match configured bot ${ctx.assertedBot}`
     );
   }
   const principal = principals.find((item) => item.id === ctx.assertedPrincipal);
   if (!principal) {
     throw new AuthzError(
       "unknown_principal",
-      `gateway-asserted principal ${ctx.assertedPrincipal} is not in the principal store`
+      `configured principal ${ctx.assertedPrincipal} is not in the principal store`
     );
   }
   if (!principal.bots.includes("*") && !principal.bots.includes(ctx.assertedBot)) {

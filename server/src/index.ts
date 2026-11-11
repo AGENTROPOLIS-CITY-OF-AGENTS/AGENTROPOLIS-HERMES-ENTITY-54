@@ -1,7 +1,7 @@
 // HERMES ENTITY54 — authorization MCP server (stdio).
 //
 // The server exposes eight tools. Every tool first resolves the caller
-// against the gateway-asserted identity, then authorizes against the
+// against the static principal configured for this profile, then authorizes against the
 // versioned policy, and only then acts. Every call-tool decision writes a
 // tamper-evident receipt: allows and denies for authorize, Linear,
 // policy import and activation, policy export, status, receipt
@@ -77,8 +77,8 @@ const TOOLS = [
     "entity54_authorize",
     "Check whether a principal is allowed to call a tool on a bot, under the active ENTITY54 policy. Default-deny. The decision is written to the receipt log.",
     {
-      principal: { type: "string", description: "Caller principal id. Must equal the gateway-asserted principal." },
-      bot: { type: "string", description: "Bot id. Must equal the gateway-asserted bot." },
+      principal: { type: "string", description: "Caller principal id. Must equal the profile-configured principal." },
+      bot: { type: "string", description: "Bot id. Must equal the profile-configured bot." },
       tool: { type: "string", description: "Tool name to check, for example linear:create-issue." },
     },
     ["principal", "bot", "tool"]

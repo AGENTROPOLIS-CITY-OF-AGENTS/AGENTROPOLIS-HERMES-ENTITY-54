@@ -3,7 +3,7 @@
 // plus a .env file the operator copies into the Hermes profile environment.
 //
 // Run once, from the server directory:
-//   node scripts/setup.mjs --data-dir ./data --owner tg:YOUR_TELEGRAM_ID
+//   node scripts/setup.mjs --owner tg:YOUR_TELEGRAM_ID
 //
 // The script never prints the full keys to stdout in a form that should be
 // pasted anywhere public; it writes them to the local .env file only.
@@ -31,7 +31,11 @@ function flag(name, fallback) {
   return hit ? hit.slice(name.length + 1) : fallback;
 }
 
-const dataDir = path.resolve(flag("--data-dir", "./data"));
+const pluginData = process.env.PLUGIN_DATA;
+const dataDir = path.resolve(flag("--data-dir", pluginData ? path.join(pluginData, "entity54") : ""));
+if (!pluginData && !args.some((arg) => arg.startsWith("--data-dir="))) {
+  throw new Error("PLUGIN_DATA is required unless --data-dir is supplied. Refusing to initialize server/data.");
+}
 const ownerId = flag("--owner", "tg:000000000");
 const ownerBot = flag("--bot", "bot-main");
 const ownerChannelUserId = ownerId.includes(":") ? ownerId.split(":").slice(1).join(":") : ownerId;
@@ -64,7 +68,6 @@ fs.writeFileSync(path.join(dataDir, "entity54.principals.json"), `${JSON.stringi
 const envLines = [
   "# ENTITY54 profile environment. Copy these into the Hermes profile .env.",
   "# Never commit this file. Never paste the keys into a chat, a ticket, or a repo.",
-  `ENTITY54_DATA_DIR=${dataDir}`,
   `ENTITY54_PRINCIPAL_ID=${ownerId}`,
   `ENTITY54_BOT_ID=${ownerBot}`,
   `ENTITY54_POLICY_KEY=${policyKey}`,
